@@ -8,8 +8,8 @@ from matplotlib.patches import Rectangle, Circle, FancyArrow
 # Grid boyutunu 10x10 olarak genişlettim. Daha büyük bir mağaza ortamı için.
 GRID_SIZE = 10
 MAX_BATTERY = 100
-# Başlangıç şarjını düşürünce robot bölüm içinde daha fazla şarj istasyonuna uğramak zorunda kalıyor.
-INITIAL_BATTERY = 40
+# Başlangıç şarjını düşük tuttum ki robot bölüm içinde mutlaka şarj istasyonuna uğramak zorunda kalsın.
+INITIAL_BATTERY = 50
 # 10x10 grid'de daha fazla hücre temizleneceği için maksimum adımı da arttırdım.
 MAX_STEPS = 300
 
@@ -27,9 +27,8 @@ OBSTACLES = {
 
 # Dinamik kirlilik üretimi parametreleri.
 # Her bölümde kirli hücre sayısı bu aralıkta rastgele seçiliyor.
-# Daha karmaşık senaryo için 14-18 yaptım (önceden 11-14).
-DIRT_MIN_CELLS = 14
-DIRT_MAX_CELLS = 18
+DIRT_MIN_CELLS = 11
+DIRT_MAX_CELLS = 14
 # Kirlilik seviyesi olasılıkları: az kirli daha sık, çok kirli daha nadir.
 DIRT_LEVEL_WEIGHTS = [0.45, 0.35, 0.20]  # level 1, 2, 3 olasılıkları
 
