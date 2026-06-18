@@ -10,10 +10,15 @@ class QLearningAgent:
         epsilon: float = 1.0,
         epsilon_min: float = 0.01,
         epsilon_decay: float = 0.995,
+        alpha_min: float = 0.01,
+        alpha_decay: float = 1.0,
         seed: int = 42,
     ):
         # Öğrenme hızını kontrol eden parametre, klasik Q-Learning değeri olarak 0.1 verdim.
         self.alpha = alpha
+        self.alpha_min = alpha_min
+        # Alpha decay 1.0 olursa öğrenme hızı sabit kalır. Daha küçük yaparsam zamanla azalır.
+        self.alpha_decay = alpha_decay
         # Gelecekteki ödüllerin bugünkü değerini belirleyen indirgeme faktörü.
         self.gamma = gamma
         self.epsilon = epsilon
@@ -22,9 +27,10 @@ class QLearningAgent:
         self.epsilon_decay = epsilon_decay
         self.n_actions = 6
 
-        # Q-Table'ı 5x5x4x3x6 boyutlu numpy array olarak tuttum, toplam 1800 hücre oluyor.
-        # Sözlük yerine numpy kullanmamın sebebi indekslemenin daha hızlı olması.
-        self.q_table = np.zeros((5, 5, 4, 3, 6))
+        # Q-Table'ı 10x10x4x4x3x3x6 boyutlu numpy array olarak tuttum.
+        # 10x10 grid, 4 şarj bandı, 4 kirlilik seviyesi, 3x3 en yakın kirli yönü, 6 aksiyon.
+        # Toplam 86400 hücre. Sözlük yerine numpy daha hızlı indeksleniyor.
+        self.q_table = np.zeros((10, 10, 4, 4, 3, 3, 6))
 
         self.rng = np.random.default_rng(seed)
 
@@ -59,6 +65,8 @@ class QLearningAgent:
     def decay_epsilon(self):
         # Epsilon'u azaltırken minimum değerin altına düşmemesine dikkat ediyorum.
         self.epsilon = max(self.epsilon * self.epsilon_decay, self.epsilon_min)
+        # Alpha'yı da yavaşça azaltıyorum ki geç eğitimde Q değerleri daha stabil otursun.
+        self.alpha = max(self.alpha * self.alpha_decay, self.alpha_min)
 
     def save(self, filepath: str):
         np.save(filepath, self.q_table)

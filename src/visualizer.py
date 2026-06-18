@@ -121,36 +121,62 @@ def plot_comparison(q_rewards, random_rewards, save_path: str):
     plt.close(fig)
 
 
-def record_episode_gif(env, agent, save_path: str, fps: int = 3, max_steps: int = 200):
+def record_episode_gif(env, agent, save_path: str, fps: int = 5, max_steps: int = 300, eps: float = 0.0, max_attempts: int = 30):
     # Eğitilmiş ajanı bir bölüm boyunca çalıştırıp her adımı frame olarak topluyorum.
-    frames = []
-    state = env.reset()
+    # Çok küçük bir epsilon (0.02) bırakıyorum ki deterministik döngülere takılmasın.
+    # Başarısız bir bölüm yakalarsam max_attempts kez tekrar deniyorum, başarılı olanı kaydediyorum.
 
-    # İlk frame başlangıç durumunu gösteriyor.
-    frames.append(env.render())
+    # Geçici olarak ajanın epsilon'unu ayarlıyorum.
+    saved_epsilon = getattr(agent, "epsilon", None)
+    if saved_epsilon is not None:
+        agent.epsilon = eps
 
-    done = False
-    steps = 0
-    info = {}
+    best_frames = None
+    best_info = None
+    best_reward = -1e9
+    best_steps = 0
 
-    while not done and steps < max_steps:
-        # training=False vermek önemli, ajan rastgele hareket etmeden en iyi aksiyonu seçiyor.
-        action = agent.choose_action(state, training=False)
-        next_state, reward, done, info = env.step(action)
-
-        # Aksiyon sonrası yeni durumu da frame olarak ekliyorum.
+    for attempt in range(max_attempts):
+        frames = []
+        state = env.reset()
         frames.append(env.render())
 
-        state = next_state
-        steps += 1
+        done = False
+        steps = 0
+        info = {}
 
-    # Duration'ı 1/fps olarak veriyorum, 3 fps demek her frame 1/3 saniye gözüksün.
+        while not done and steps < max_steps:
+            action = agent.choose_action(state, training=True)
+            next_state, reward, done, info = env.step(action)
+            frames.append(env.render())
+            state = next_state
+            steps += 1
+
+        # Başarılı bir bölüm bulduysam onu kullanıyorum ve döngüden çıkıyorum.
+        if info.get("result") == "success":
+            best_frames = frames
+            best_info = info
+            best_reward = env.total_reward
+            best_steps = steps
+            print(f"  GIF: Basarili bolum bulundu ({attempt+1}. denemede, {steps} adim).")
+            break
+
+        # Başarısızsa en iyi (en yüksek ödüllü) bölümü saklıyorum.
+        if env.total_reward > best_reward:
+            best_frames = frames
+            best_info = info
+            best_reward = env.total_reward
+            best_steps = steps
+
     duration = 1.0 / fps
+    imageio.mimsave(save_path, best_frames, duration=duration, loop=0)
 
-    # loop=0 verince GIF sonsuz döngüye giriyor, izlemesi rahat oluyor.
-    imageio.mimsave(save_path, frames, duration=duration, loop=0)
+    # Orijinal epsilon'u geri yüklüyorum.
+    if saved_epsilon is not None:
+        agent.epsilon = saved_epsilon
 
     print(
-        f"GIF kaydedildi: {save_path} ({len(frames)} frame, {fps} fps, "
-        f"sonuc: {info.get('result', 'unknown')}, toplam odul: {env.total_reward:.0f})"
+        f"GIF kaydedildi: {save_path} ({len(best_frames)} frame, {fps} fps, "
+        f"sonuc: {best_info.get('result', 'unknown') if best_info else 'unknown'}, "
+        f"toplam odul: {best_reward:.0f})"
     )

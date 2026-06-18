@@ -54,34 +54,46 @@ def train(env, agent, episodes: int = 3000, log_every: int = 100) -> dict:
     return history
 
 
-def evaluate(env, agent, episodes: int = 100) -> dict:
-    # Bu fonksiyonda epsilon=0 ile sadece sömürü yapıyorum, ajan öğrenilen politikayı test ediyor.
+def evaluate(env, agent, episodes: int = 100, eval_epsilon: float = 0.02) -> dict:
+    # Değerlendirmede çok küçük bir rastgelelik bırakıyorum (eps=0.02).
+    # Tam deterministik (eps=0) yapsam ortam da deterministik olduğu için aynı bölüm
+    # 100 kez tekrarlanıyor; tek bir loop hatası bütün eval'i bozuyor.
     results = {
         "rewards": [],
         "lengths": [],
         "success": [],
     }
 
-    for _ in range(episodes):
-        state = env.reset()
-        total_reward = 0.0
-        steps = 0
-        info = {}
+    # Geçici olarak ajanın epsilon'unu değerlendirme epsilonuna ayarlıyorum.
+    saved_epsilon = getattr(agent, "epsilon", None)
+    if saved_epsilon is not None:
+        agent.epsilon = eval_epsilon
 
-        done = False
-        while not done:
-            # training=False parametresi sayesinde rastgelelik olmuyor, hep en iyi aksiyon seçiliyor.
-            action = agent.choose_action(state, training=False)
-            next_state, reward, done, info = env.step(action)
-            # Burada agent.update yok çünkü test aşamasındayız, Q-Table değişmesin.
-            state = next_state
-            total_reward += reward
-            steps += 1
+    try:
+        for _ in range(episodes):
+            state = env.reset()
+            total_reward = 0.0
+            steps = 0
+            info = {}
 
-        success = info.get("result") == "success"
-        results["rewards"].append(total_reward)
-        results["lengths"].append(steps)
-        results["success"].append(int(success))
+            done = False
+            while not done:
+                # training=True veriyorum ki epsilon devreye girsin, ama eps çok küçük.
+                action = agent.choose_action(state, training=True)
+                next_state, reward, done, info = env.step(action)
+                # Burada agent.update yok çünkü test aşamasındayız, Q-Table değişmesin.
+                state = next_state
+                total_reward += reward
+                steps += 1
+
+            success = info.get("result") == "success"
+            results["rewards"].append(total_reward)
+            results["lengths"].append(steps)
+            results["success"].append(int(success))
+    finally:
+        # Orijinal epsilon'u geri yüklüyorum.
+        if saved_epsilon is not None:
+            agent.epsilon = saved_epsilon
 
     return results
 

@@ -32,14 +32,19 @@ def main():
         gamma=0.95,
         epsilon=1.0,
         epsilon_min=0.01,
-        epsilon_decay=0.995,
+        # Büyük state space'te daha fazla keşif gerek, decay'i yavaşlattım.
+        epsilon_decay=0.9997,
+        # Alpha'yı da yavaşça azaltıyorum ki geç eğitimde Q değerleri stabil otursun.
+        alpha_min=0.02,
+        alpha_decay=0.9999,
         seed=42,
     )
 
     # Eğitim aşaması başlıyor.
-    print("\n[1/5] Egitim baslatiliyor (3000 bolum)...\n")
-    # Yaptığım denemelerde 3000 bölümün yeterli olduğunu gördüm.
-    history = train(env, agent, episodes=3000, log_every=100)
+    # Dinamik kirlilik nedeniyle her bölüm farklı, ajan genelleştirmeyi öğrenmesi için
+    # 25000 bölüme çıkardım.
+    print("\n[1/5] Egitim baslatiliyor (25000 bolum, dinamik kirlilik)...\n")
+    history = train(env, agent, episodes=25000, log_every=1000)
 
     # Eğitilmiş Q-Table'ı diske kaydediyorum, sonra tekrar eğitmek istemiyorsam yükleyebilirim.
     print("\n[2/5] Q-Table kaydediliyor...")
@@ -72,7 +77,7 @@ def main():
     # Final bölümün GIF kaydını üretiyorum.
     print("\n[5/5] Final episode GIF'i uretiliyor...")
     record_episode_gif(
-        env, agent, "outputs/gifs/final_episode.gif", fps=3
+        env, agent, "outputs/gifs/final_episode.gif", fps=5, max_steps=300
     )
 
     # En sonunda bütün sayısal sonuçları konsola yazdırıyorum.
