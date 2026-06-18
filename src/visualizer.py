@@ -121,6 +121,57 @@ def plot_comparison(q_rewards, random_rewards, save_path: str):
     plt.close(fig)
 
 
+def record_best_episode_gif(env, agent, save_path: str, fps: int = 5, max_steps: int = 300, eps: float = 0.0, n_candidates: int = 50):
+    # En iyi bölümü seçmek için n_candidates kadar deneme yapıyorum.
+    # Başarılı ve en yüksek ödüllü olanı kaydediyorum.
+    saved_epsilon = getattr(agent, "epsilon", None)
+    if saved_epsilon is not None:
+        agent.epsilon = eps
+
+    best_frames = None
+    best_info = None
+    best_reward = -1e9
+    best_steps = 0
+
+    for attempt in range(n_candidates):
+        frames = []
+        state = env.reset()
+        frames.append(env.render())
+
+        done = False
+        steps = 0
+        info = {}
+
+        while not done and steps < max_steps:
+            action = agent.choose_action(state, training=True)
+            next_state, reward, done, info = env.step(action)
+            frames.append(env.render())
+            state = next_state
+            steps += 1
+
+        # Sadece başarılı bölümleri değerlendiriyorum.
+        if info.get("result") == "success":
+            if env.total_reward > best_reward:
+                best_frames = frames
+                best_info = info
+                best_reward = env.total_reward
+                best_steps = steps
+
+    duration = 1.0 / fps
+    if best_frames is None:
+        raise RuntimeError(f"{n_candidates} denemede basarili bolum bulunamadi.")
+    imageio.mimsave(save_path, best_frames, duration=duration, loop=0)
+
+    if saved_epsilon is not None:
+        agent.epsilon = saved_epsilon
+
+    print(
+        f"GIF kaydedildi: {save_path} ({len(best_frames)} frame, "
+        f"adim={best_steps}, odul={best_reward:.0f})"
+    )
+    return {"steps": best_steps, "reward": best_reward}
+
+
 def record_episode_gif(env, agent, save_path: str, fps: int = 5, max_steps: int = 300, eps: float = 0.0, max_attempts: int = 30):
     # Eğitilmiş ajanı bir bölüm boyunca çalıştırıp her adımı frame olarak topluyorum.
     # Başarısız bir bölüm yakalarsam max_attempts kez tekrar deniyorum, başarılı olanı kaydediyorum.
