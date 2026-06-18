@@ -123,8 +123,13 @@ def plot_comparison(q_rewards, random_rewards, save_path: str):
 
 def record_episode_gif(env, agent, save_path: str, fps: int = 5, max_steps: int = 300, eps: float = 0.0, max_attempts: int = 30):
     # Eğitilmiş ajanı bir bölüm boyunca çalıştırıp her adımı frame olarak topluyorum.
-    # Çok küçük bir epsilon (0.02) bırakıyorum ki deterministik döngülere takılmasın.
     # Başarısız bir bölüm yakalarsam max_attempts kez tekrar deniyorum, başarılı olanı kaydediyorum.
+
+    # Env'in rng'sini sistem zamanı ile yeniden seedliyorum ki her çalıştırmada
+    # farklı bir kirlilik dağılımı GIF'e düşsün. Aksi halde env hep aynı seed=42 ile
+    # başlayıp aynı dağılımı veriyordu.
+    import time
+    env.rng = np.random.default_rng(int(time.time() * 1e6) % (2**32))
 
     # Geçici olarak ajanın epsilon'unu ayarlıyorum.
     saved_epsilon = getattr(agent, "epsilon", None)
